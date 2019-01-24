@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timedelta
 import pytz
 from lxml import html
+from difflib import SequenceMatcher
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -51,7 +52,21 @@ page = b.html
 page = ' '.join(page.split('\n'))
 tree = html.fromstring(page)
 
-classes = tree.xpath("//*[@id='main-content']/div[1]/div/ul/li/a/text()")[:7]
+courses = tree.xpath("//*[@id='main-content']/div[1]/div/ul/li/a/text()")[:7]
+
+
+def getCourse():
+    course = ""
+    maxScore = 0.1
+
+    for i in courses:
+        rate = SequenceMatcher(None, i, a.course).ratio()
+        # print(rate)
+        if(rate > maxScore):
+            maxScore = rate
+            course = i
+
+    return course
 
 
 for a in assignments:
@@ -62,10 +77,22 @@ for a in assignments:
     #   b.find_by_text("Close").click()
 
     b.find_by_xpath("//*[@id='main-content']/div[2]/div/a").click()
+    courseIDs = b.find_by_xpath("//*[@id='cls']/option")
+    del courseIDs[0]
+
+    c = 0
+    while c < len(courseIDs):
+        courseIDs[c] = courseIDs[c]['value']
+        c += 1
+    courseDict = dict(zip(courses, courseIDs))
+    # print(getCourse())
+    # print(a.name)
     b.fill("title", a.name)
+    b.select("cls", courseDict[getCourse()])
+
     b.fill("due_date", a.dueAt)
     b.fill("additional_info", a.description)
 
     b.find_by_value("Save").click()
-    time.sleep(4)
+    time.sleep(1)
     print("Added: " + a.name)
